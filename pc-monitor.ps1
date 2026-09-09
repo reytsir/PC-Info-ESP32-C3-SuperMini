@@ -1,6 +1,11 @@
 # ESP32 System Monitor - PC Client (WMI GPU Performance Counters)
 # Uses same data source as Windows Task Manager
 
+# Silent
+$host.UI.RawUI.WindowTitle = "ESP32 Monitor (Running)"
+$ErrorActionPreference = "SilentlyContinue"
+[Console]::CursorVisible = $false
+
 # --- CONFIGURATION ---
 $ESP32_HOSTNAME = "esp32monitor.local"
 $UDP_PORT = 4210
