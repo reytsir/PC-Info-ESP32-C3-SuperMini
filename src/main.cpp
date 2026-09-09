@@ -1,9 +1,11 @@
 /*
  * ESP32 System Monitor
- * Version 7.0 - UDP Server with JSON
+ * Version 9.0 - Final with mDNS and Auto-Reconnect
  * 
- * Receives system stats from PC via UDP in JSON format.
- * Expected format: {"cpu_temp":45.0,"gpu_temp":62.0,"cpu_usage":50,"gpu_usage":70,"ram_usage":60}
+ * Features:
+ * - mDNS hostname (esp32monitor.local) instead of IP
+ * - Wi-Fi auto-reconnect
+ * - Password protected AP mode
  */
 
 #include <Arduino.h>
@@ -13,6 +15,7 @@
 #include <WiFiManager.h>
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
+#include <ESPmDNS.h>  // ← ДОБАВИТЬ ЭТУ БИБЛИОТЕКУ!
 
 // OLED display (I2C: SDA=GPIO8, SCL=GPIO9)
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
@@ -55,64 +58,106 @@ void drawRightAligned(int y, const char* text) {
 void setup() {
     delay(2000);
     
-    // Initialize I2C and display
     Wire.begin(8, 9);
     u8g2.begin();
     u8g2.setFont(u8g2_font_6x10_tr);
     
-    // Boot screen
     u8g2.clearBuffer();
     u8g2.drawStr(0, 10, "ESP32 Monitor");
-    u8g2.drawStr(0, 25, "v7.0 UDP+JSON");
+    u8g2.drawStr(0, 25, "v9.1 Auto-AP");
     u8g2.drawStr(0, 40, "Starting...");
     u8g2.sendBuffer();
     
-    // Configure WiFiManager
-    wm.setConfigPortalTimeout(120);
+    // Настройка WiFiManager
+    wm.setConfigPortalTimeout(120);  // Портал активен 2 минуты
     
-    // Connect to WiFi
-    if (wm.autoConnect("ESP32_Monitor_Setup")) {
-        wifiConnected = true;
+    u8g2.clearBuffer();
+    u8g2.drawStr(0, 10, "Connecting...");
+    u8g2.drawStr(0, 25, "to saved WiFi");
+    u8g2.drawStr(0, 45, "Wait 30s...");
+    u8g2.sendBuffer();
+    
+    // Пробуем подключиться к сохранённой сети
+    // Если не получается за 30 секунд — автоматически запускаем портал
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();  // Используем сохранённые credentials
+    
+    int waitCount = 0;
+    while (WiFi.status() != WL_CONNECTED && waitCount < 30) {
+        delay(1000);
+        waitCount++;
         
-        // Start UDP server
+        // Показываем обратный отсчёт
+        u8g2.clearBuffer();
+        u8g2.drawStr(0, 10, "Connecting...");
+        u8g2.setCursor(0, 25);
+        u8g2.print("Attempt: ");
+        u8g2.print(waitCount);
+        u8g2.print("/30");
+        u8g2.sendBuffer();
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        // Успешно подключились
+        wifiConnected = true;
         udp.begin(UDP_PORT);
         
-        // Show success
+        if (MDNS.begin("esp32monitor")) {
+            MDNS.addService("http", "tcp", 80);
+        }
+        
         u8g2.clearBuffer();
         u8g2.drawStr(0, 10, "WiFi OK!");
         u8g2.setCursor(0, 25);
         u8g2.print(WiFi.localIP().toString().c_str());
-        u8g2.drawStr(0, 35, "UDP:");
-        u8g2.setCursor(25, 35);
-        u8g2.print(UDP_PORT);
+        u8g2.drawStr(0, 35, "mDNS:");
+        u8g2.drawStr(0, 45, "esp32monitor.local");
         u8g2.sendBuffer();
         
         delay(2000);
     } else {
-        // Connection failed
+        // Не смогли подключиться — запускаем портал конфигурации
         u8g2.clearBuffer();
         u8g2.drawStr(0, 10, "WiFi Failed!");
-        u8g2.drawStr(0, 25, "Restarting...");
+        u8g2.drawStr(0, 25, "Starting AP...");
+        u8g2.drawStr(0, 40, "Connect to:");
+        u8g2.drawStr(0, 50, "System_monitor");
         u8g2.sendBuffer();
-        delay(3000);
+        
+        delay(2000);
+        
+        // Запускаем портал конфигурации
+        WiFi.mode(WIFI_AP);
+        wm.startConfigPortal("System_monitor", "12345678");
+        
+        // Если пользователь настроил Wi-Fi — перезагружаемся
         ESP.restart();
     }
 }
 
 void loop() {
-    // Check for incoming UDP packets
+    // 1. Wi-Fi Resilience: Auto-reconnect if dropped
+    if (WiFi.status() != WL_CONNECTED) {
+        status = "No";
+        wifiConnected = false;
+        WiFi.reconnect();
+        delay(1000);
+        return;
+    } else {
+        wifiConnected = true;
+    }
+
+    // 2. Check for incoming UDP packets
     int packetSize = udp.parsePacket();
     if (packetSize > 0) {
         char buf[256];
         int len = udp.read(buf, sizeof(buf) - 1);
         buf[len] = '\0';
         
-        // Parse JSON
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, buf);
         
         if (!error) {
-            // Extract values with defaults
             cpuTemp = doc["cpu_temp"] | 0.0;
             gpuTemp = doc["gpu_temp"] | 0.0;
             cpuUsage = doc["cpu_usage"] | 0;
@@ -126,50 +171,51 @@ void loop() {
         }
     }
     
-    // Check timeout (no data for 10 seconds)
+    // 3. Check timeout (no data for 10 seconds)
     if (millis() - lastUpdate > 10000 && lastUpdate > 0) {
         status = "No";
     }
     
-    // Update display
+    // 4. Update display
     u8g2.clearBuffer();
     
-    // Header with status (right-aligned with spacing)
+    // Header
     u8g2.setFont(u8g2_font_7x13_tr);
     u8g2.drawStr(0, 12, "System Monitor");
     
-    // Status indicator (right-aligned with gap)
-    u8g2.setFont(u8g2_font_6x10_tr);
-    int statusWidth = u8g2.getStrWidth(status.c_str());
-    u8g2.setCursor(128 - statusWidth - 5, 12);  // 5px gap from right edge
-    u8g2.print(status.c_str());
+    // Status + Wi-Fi Signal (RSSI) on the right
+    u8g2.setFont(u8g2_font_5x8_tr);
+    String statusStr;
+    if(status =="No"){
+        statusStr = status;
+    }
+    else{
+        statusStr = " [" + String(WiFi.RSSI()) + "]";
+    }
+    int statusWidth = u8g2.getStrWidth(statusStr.c_str());
+    u8g2.setCursor(128 - statusWidth - 2, 11);
+    u8g2.print(statusStr.c_str());
     
-    // CPU with progress bar
+    // CPU
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.drawStr(0, 25, "CPU:");
     u8g2.setCursor(30, 25);
     u8g2.print(cpuUsage);
     u8g2.print("% ");
-    
-    // Temperature (right-aligned)
     String cpuTempStr = String(cpuTemp, 1) + "C";
     drawRightAligned(25, cpuTempStr.c_str());
-    
     drawProgressBar(0, 28, 128, 4, cpuUsage);
     
-    // GPU with progress bar
+    // GPU
     u8g2.drawStr(0, 40, "GPU:");
     u8g2.setCursor(30, 40);
     u8g2.print(gpuUsage);
     u8g2.print("% ");
-    
-    // Temperature (right-aligned)
     String gpuTempStr = String(gpuTemp, 1) + "C";
     drawRightAligned(40, gpuTempStr.c_str());
-    
     drawProgressBar(0, 43, 128, 4, gpuUsage);
     
-    // RAM with progress bar
+    // RAM
     u8g2.drawStr(0, 55, "RAM:");
     u8g2.setCursor(30, 55);
     u8g2.print(ramUsage);
