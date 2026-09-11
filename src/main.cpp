@@ -74,7 +74,7 @@ void setup() {
     u8g2.clearBuffer();
     u8g2.drawStr(0, 10, "Connecting...");
     u8g2.drawStr(0, 25, "to saved WiFi");
-    u8g2.drawStr(0, 45, "Wait 30s...");
+    u8g2.drawStr(0, 45, "Wait 15s...");
     u8g2.sendBuffer();
     
     WiFi.mode(WIFI_STA);
