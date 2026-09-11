@@ -68,9 +68,6 @@ void setup() {
     u8g2.drawStr(0, 40, "Starting...");
     u8g2.sendBuffer();
     
-    // Config WiFiManager
-    wm.setConfigPortalTimeout(120);  // Портал активен 2 минуты
-    
     u8g2.clearBuffer();
     u8g2.drawStr(0, 10, "Connecting...");
     u8g2.drawStr(0, 25, "to saved WiFi");
@@ -93,6 +90,8 @@ void setup() {
         u8g2.print(waitCount);
         u8g2.print("/15");
         u8g2.sendBuffer();
+
+
     }
     
     if (WiFi.status() == WL_CONNECTED) {
@@ -114,12 +113,12 @@ void setup() {
         
         delay(2000);
     } else {
-        // Не смогли подключиться — запускаем портал конфигурации
+        // Wi-Fi config setup
         u8g2.clearBuffer();
         u8g2.drawStr(0, 10, "WiFi Failed!");
-        u8g2.drawStr(0, 25, "Starting AP...");
-        u8g2.drawStr(0, 40, "Connect to:");
-        u8g2.drawStr(0, 50, "System_monitor");
+        u8g2.drawStr(0, 25, "SSID: System_monitor");
+        u8g2.drawStr(0, 35, "Pass: 12345678");
+        u8g2.drawStr(0, 45, "cfg: 192.168.4.1");
         u8g2.sendBuffer();
         
         delay(2000);
