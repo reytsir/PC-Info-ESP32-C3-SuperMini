@@ -68,7 +68,7 @@ void setup() {
     u8g2.drawStr(0, 40, "Starting...");
     u8g2.sendBuffer();
     
-    // Настройка WiFiManager
+    // Config WiFiManager
     wm.setConfigPortalTimeout(120);  // Портал активен 2 минуты
     
     u8g2.clearBuffer();
@@ -77,28 +77,26 @@ void setup() {
     u8g2.drawStr(0, 45, "Wait 30s...");
     u8g2.sendBuffer();
     
-    // Пробуем подключиться к сохранённой сети
-    // Если не получается за 30 секунд — автоматически запускаем портал
     WiFi.mode(WIFI_STA);
-    WiFi.begin();  // Используем сохранённые credentials
+    WiFi.begin();  // Use saved credentials
     
     int waitCount = 0;
-    while (WiFi.status() != WL_CONNECTED && waitCount < 30) {
+    while (WiFi.status() != WL_CONNECTED && waitCount < 15) {
         delay(1000);
         waitCount++;
         
-        // Показываем обратный отсчёт
+        // Timer
         u8g2.clearBuffer();
         u8g2.drawStr(0, 10, "Connecting...");
         u8g2.setCursor(0, 25);
         u8g2.print("Attempt: ");
         u8g2.print(waitCount);
-        u8g2.print("/30");
+        u8g2.print("/15");
         u8g2.sendBuffer();
     }
     
     if (WiFi.status() == WL_CONNECTED) {
-        // Успешно подключились
+        // Success
         wifiConnected = true;
         udp.begin(UDP_PORT);
         
@@ -126,11 +124,11 @@ void setup() {
         
         delay(2000);
         
-        // Запускаем портал конфигурации
+        // Wi-Fi config
         WiFi.mode(WIFI_AP);
         wm.startConfigPortal("System_monitor", "12345678");
         
-        // Если пользователь настроил Wi-Fi — перезагружаемся
+        // Restart when configured
         ESP.restart();
     }
 }
