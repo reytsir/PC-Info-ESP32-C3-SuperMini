@@ -93,42 +93,62 @@ void setup() {
 
 
     }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-        // Success
-        wifiConnected = true;
-        udp.begin(UDP_PORT);
-        
-        if (MDNS.begin("esp32monitor")) {
-            MDNS.addService("http", "tcp", 80);
+    if (WiFi.getHostname != NULL){
+        if (WiFi.status() == WL_CONNECTED) {
+            // Success
+            wifiConnected = true;
+            udp.begin(UDP_PORT);
+            
+            if (MDNS.begin("sysmon")) {
+                MDNS.addService("http", "tcp", 80);
+            }
+            
+            u8g2.clearBuffer();
+            u8g2.drawStr(0, 10, "WiFi OK!");
+            u8g2.setCursor(0, 25);
+            u8g2.print(WiFi.localIP().toString().c_str());
+            u8g2.drawStr(0, 35, "mDNS:");
+            u8g2.drawStr(0, 45, "sysmon.local");
+            u8g2.sendBuffer();
+            
+            delay(2000);
+        } else {
+            wm.resetSettings();
+            // Wi-Fi config setup
+            u8g2.clearBuffer();
+            u8g2.drawStr(0, 10, "WiFi Failed!");
+            u8g2.drawStr(0, 25, "Reconfigure network");
+            u8g2.drawStr(0, 35, "SSID: System_monitor");
+            u8g2.drawStr(0, 45, "Pass: 12345678");
+            u8g2.drawStr(0, 55, "cfg: 192.168.4.1");
+            u8g2.sendBuffer();
+            
+            delay(2000);
+            
+            // Wi-Fi config
+            WiFi.mode(WIFI_AP);
+            wm.startConfigPortal("System_monitor", "12345678");
+            
+            // Restart when configured
+            ESP.restart();
         }
-        
+    }else{
         u8g2.clearBuffer();
-        u8g2.drawStr(0, 10, "WiFi OK!");
-        u8g2.setCursor(0, 25);
-        u8g2.print(WiFi.localIP().toString().c_str());
-        u8g2.drawStr(0, 35, "mDNS:");
-        u8g2.drawStr(0, 45, "esp32monitor.local");
-        u8g2.sendBuffer();
-        
-        delay(2000);
-    } else {
-        // Wi-Fi config setup
-        u8g2.clearBuffer();
-        u8g2.drawStr(0, 10, "WiFi Failed!");
-        u8g2.drawStr(0, 25, "SSID: System_monitor");
-        u8g2.drawStr(0, 35, "Pass: 12345678");
-        u8g2.drawStr(0, 45, "cfg: 192.168.4.1");
-        u8g2.sendBuffer();
-        
-        delay(2000);
-        
-        // Wi-Fi config
-        WiFi.mode(WIFI_AP);
-        wm.startConfigPortal("System_monitor", "12345678");
-        
-        // Restart when configured
-        ESP.restart();
+            u8g2.drawStr(0, 10, "WiFi not configured!");
+            u8g2.drawStr(0, 25, "Configure network");
+            u8g2.drawStr(0, 35, "SSID: System_monitor");
+            u8g2.drawStr(0, 45, "Pass: 12345678");
+            u8g2.drawStr(0, 55, "cfg: 192.168.4.1");
+            u8g2.sendBuffer();
+            
+            delay(2000);
+            
+            // Wi-Fi config
+            WiFi.mode(WIFI_AP);
+            wm.startConfigPortal("System_monitor", "12345678");
+            
+            // Restart when configured
+            ESP.restart();
     }
 }
 
