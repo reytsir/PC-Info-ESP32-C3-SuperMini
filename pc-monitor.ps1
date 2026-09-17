@@ -7,7 +7,7 @@ $ErrorActionPreference = "SilentlyContinue"
 [Console]::CursorVisible = $false
 
 # --- CONFIGURATION ---
-$ESP32_HOSTNAME = "esp32monitor.local"
+$ESP32_HOSTNAME = "sysmon.local"
 $UDP_PORT = 4210
 
 # Resolve mDNS to IP
