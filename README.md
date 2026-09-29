@@ -42,11 +42,11 @@ For the mDNS name (esp32.local) to work on Windows, you must install Apple's Bon
 ## 🔌 Wiring Diagram
 
 ### Power Path (Critical for stability)
-text [Battery +] ──> IP5306 (B+) [Battery -] ──> IP5306 (B-) AND MT3608 (VIN-)  IP5306 (OUT+) ──> [Switch] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Shared Ground]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) AND OLED (GND) [Shared Ground Point] 
+> [Battery +] ──> IP5306 (B+) [Battery -] ──> IP5306 (B-) AND MT3608 (VIN-)  IP5306 (OUT+) ──> [Switch] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Shared Ground]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) AND OLED (GND) [Shared Ground Point] 
 💡 Tip: Solder a 470µF capacitor between MT3608 VOUT+ and VOUT- to prevent voltage drops when ESP32 WiFi spikes.
 
 ### Data & OLED Power
-text ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Connect to the shared MT3608 VOUT- ground) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
+> ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Connect to the shared MT3608 VOUT- ground) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
 
 ---
 
@@ -94,7 +94,7 @@ To make the script start hidden in the background when you log in, use Task Sche
 5. Action: Start a program. Click Next.
 6. Program/script: powershell.exe
 7. Add arguments (copy exactly, replace path with yours):
- text  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\full\path\to\your\pc-monitor.ps1" 
+ >  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\full\path\to\your\pc-monitor.ps1" 
 8. Click Finish.
 9. Find your new task in the library, right-click it → Properties.
 10. Check "Run with highest privileges" and click OK.
@@ -136,7 +136,7 @@ Monitoring Methods:
 
 ## 🖥️ Display Layout
 
-text System Monitor OK CPU: 35% 45.2C [███████░░░░░░░░░░░] GPU: 5% 48.0C [█░░░░░░░░░░░░░░░░░] RAM: 58% [████████░░░░░░░░░░] 
+> System Monitor OK CPU: 35% 45.2C [███████░░░░░░░░░░░] GPU: 5% 48.0C [█░░░░░░░░░░░░░░░░░] RAM: 58% [████████░░░░░░░░░░] 
 Status indicators: OK (Receiving data) | No (No data for 10+ seconds)
 
 ---
@@ -206,11 +206,11 @@ Feel free to submit issues and enhancement requests on GitHub!
 ## 🔌 Схема подключения
 
 ### Цепь питания (Критично для стабильности)
-text [Аккумулятор +] ──> IP5306 (B+) [Аккумулятор -] ──> IP5306 (B-) И MT3608 (VIN-)  IP5306 (OUT+) ──> [Выключатель] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Общая земля]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) И OLED (GND) [Точка объединения земли] 
+> [Аккумулятор +] ──> IP5306 (B+) [Аккумулятор -] ──> IP5306 (B-) И MT3608 (VIN-)  IP5306 (OUT+) ──> [Выключатель] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Общая земля]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) И OLED (GND) [Точка объединения земли] 
 💡 Совет: Припаяйте конденсатор 470 мкФ между VOUT+ и VOUT- модуля MT3608, чтобы предотвратить просадки напряжения при пиковом потреблении WiFi модуля ESP32.
 
 ### Данные и питание OLED
-text ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Подключить к общей земле MT3608 VOUT-) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
+> ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Подключить к общей земле MT3608 VOUT-) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
 
 ---
 
@@ -258,7 +258,7 @@ text ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Подключит�
 5. Действие: Запустить программу. Нажмите "Далее".
 6. Программа или сценарий: powershell.exe
 7. Добавить аргументы (скопируйте точно, заменив путь на свой):
- text  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\полный\путь\к\вашему\pc-monitor.ps1" 
+ >  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\полный\путь\к\вашему\pc-monitor.ps1" 
 8. Нажмите Готово.
 9. Найдите созданную задачу в библиотеке, кликните правой кнопкой → Свойства.
 10. Поставьте галочку "Выполнять с наивысшими правами" и нажмите ОК.
@@ -297,7 +297,7 @@ cpp const int UDP_PORT = 4210; // Имя mDNS установлено как "esp
 
 ## 🖥️ Расположение на экране
 
-text System Monitor OK CPU: 35% 45.2C [прогресс-бар] GPU: 5% 48.0C [прогресс-бар] RAM: 58% [прогресс-бар] 
+> System Monitor OK CPU: 35% 45.2C [прогресс-бар] GPU: 5% 48.0C [прогресс-бар] RAM: 58% [прогресс-бар] 
 Индикаторы статуса: OK (данные приходят) | No (нет данных более 10 секунд)
 
 ---
