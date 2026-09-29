@@ -1,107 +1,75 @@
-# ESP32 System Monitor - PC Client (WMI GPU Performance Counters)
-# Uses same data source as Windows Task Manager
-
-# Silent
-$host.UI.RawUI.WindowTitle = "ESP32 Monitor (Running)"
+$host.UI.RawUI.WindowTitle = "ESP32 Monitor"
 $ErrorActionPreference = "SilentlyContinue"
 [Console]::CursorVisible = $false
 
-# --- CONFIGURATION ---
-$ESP32_HOSTNAME = "sysmon.local"
-$UDP_PORT = 4210
+$HOSTNAME = "esp32.local"
+$PORT = 4210
+$RECONNECT_INTERVAL = 300 
 
-# Resolve mDNS to IP
-try {
-    Write-Host "=== ESP32 Monitor Client ===" -ForegroundColor Green
-    Write-Host "Resolving $ESP32_HOSTNAME..." -ForegroundColor Cyan
-    $ips = [System.Net.Dns]::GetHostAddresses($ESP32_HOSTNAME)
-    $ESP32_IP = $ips[0].IPAddressToString
-    Write-Host "Resolved to: $ESP32_IP" -ForegroundColor Green
-} catch {
-    Write-Host "ERROR: Cannot resolve $ESP32_HOSTNAME" -ForegroundColor Red
-    Write-Host "Make sure ESP32 is connected to the same network." -ForegroundColor Yellow
-    exit 1
+function Resolve-ESP32 {
+    while ($true) {
+        try {
+            $ips = [System.Net.Dns]::GetHostAddresses($HOSTNAME)
+            $ip = $ips[0].IPAddressToString
+            Write-Host "Resolved $HOSTNAME -> $ip" -ForegroundColor Green
+            return $ip
+        } catch {
+            Write-Host "Waiting for ESP32 ($HOSTNAME)... retry in 5s" -ForegroundColor Yellow
+            Start-Sleep -Seconds 5
+        }
+    }
 }
 
-# Initialize UDP client
-$udpClient = New-Object System.Net.Sockets.UdpClient
-$udpClient.Connect($ESP32_IP, $UDP_PORT)
+function New-UDPConnection {
+    $ip = Resolve-ESP32
+    $udp = New-Object System.Net.Sockets.UdpClient
+    $udp.Connect($ip, $PORT)
+    Write-Host "Connected to $ip`:$PORT" -ForegroundColor Green
+    return $udp
+}
 
-Write-Host "UDP Port: $UDP_PORT" -ForegroundColor Cyan
-Write-Host "Using WMI GPU Performance Counters (Task Manager method)" -ForegroundColor Cyan
-Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
-Write-Host ""
+$udp = New-UDPConnection
+$lastReconnect = Get-Date
 
-# Initialize CPU counter
-$cpuCounter = New-Object System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total")
-$null = $cpuCounter.NextValue()
-Start-Sleep -Milliseconds 500
-
-# RAM counter
-$ramCounter = New-Object System.Diagnostics.PerformanceCounter("Memory", "% Committed Bytes In Use")
+$cpu = New-Object System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total")
+$null = $cpu.NextValue(); Start-Sleep -Milliseconds 500
+$ram = New-Object System.Diagnostics.PerformanceCounter("Memory", "% Committed Bytes In Use")
 
 try {
     while ($true) {
-        # 1. CPU Usage (%)
-        $cpuUsage = [math]::Round($cpuCounter.NextValue())
-
-        # 2. RAM Usage (%)
-        $ramUsage = [math]::Round($ramCounter.NextValue())
-
-        # 3. GPU Usage (%) - via WMI (same as Task Manager)
-        $gpuUsage = 0
-        try {
-            # Get GPU usage from WMI (3D usage like in Task Manager)
-            $gpuData = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction SilentlyContinue | 
-                Where-Object { $_.Name -like "*3D*" -or $_.Name -like "*enginerender*" } |
-                Measure-Object -Property UtilizationPercentage -Sum |
-                Select-Object -ExpandProperty Sum
-            
-            if ($gpuData) {
-                $gpuUsage = [math]::Round($gpuData)
-            }
-        } catch {
-            $gpuUsage = 0
-        }
-
-        # 4. Temperatures (estimated based on usage)
-        if ($cpuUsage -gt 80) {
-            $cpuTemp = 65.0 + (Get-Random -Maximum 15)
-        } elseif ($cpuUsage -gt 50) {
-            $cpuTemp = 50.0 + (Get-Random -Maximum 10)
-        } else {
-            $cpuTemp = 40.0 + (Get-Random -Maximum 5)
-        }
+        $cUsage = [math]::Round($cpu.NextValue())
+        $rUsage = [math]::Round($ram.NextValue())
         
-        if ($gpuUsage -gt 80) {
-            $gpuTemp = 60.0 + (Get-Random -Maximum 10)
-        } elseif ($gpuUsage -gt 30) {
-            $gpuTemp = 50.0 + (Get-Random -Maximum 8)
-        } else {
-            $gpuTemp = 45.0 + (Get-Random -Maximum 5)
-        }
+        $gUsage = 0
+        $gpu = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine | Where-Object Name -match "3D|enginerender"
+        if ($gpu) { $gUsage = [math]::Round(($gpu | Measure-Object UtilizationPercentage -Sum).Sum) }
 
-        # Format JSON
-        $payload = @{
-            cpu_temp  = [math]::Round($cpuTemp, 1)
-            gpu_temp  = [math]::Round($gpuTemp, 1)
-            cpu_usage = $cpuUsage
-            gpu_usage = $gpuUsage
-            ram_usage = $ramUsage
+        $cTemp = if ($cUsage -gt 80) { 65 + (Get-Random -Max 15) } elseif ($cUsage -gt 50) { 50 + (Get-Random -Max 10) } else { 40 + (Get-Random -Max 5) }
+        $gTemp = if ($gUsage -gt 80) { 60 + (Get-Random -Max 10) } elseif ($gUsage -gt 30) { 50 + (Get-Random -Max 8) } else { 45 + (Get-Random -Max 5) }
+
+        $json = @{
+            cpu_temp = [math]::Round($cTemp, 1)
+            gpu_temp = [math]::Round($gTemp, 1)
+            cpu_usage = $cUsage
+            gpu_usage = $gUsage
+            ram_usage = $rUsage
         } | ConvertTo-Json -Compress
 
-        # Send UDP packet
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
-        $udpClient.Send($bytes, $bytes.Length) | Out-Null
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+        $udp.Send($bytes, $bytes.Length) | Out-Null
 
-        # Console output
-        Write-Host "CPU: $cpuUsage% $([math]::Round($cpuTemp))C | GPU: $gpuUsage% $([math]::Round($gpuTemp))C | RAM: $ramUsage%" -ForegroundColor Green
+        if ((Get-Date) - $lastReconnect -gt (New-TimeSpan -Seconds $RECONNECT_INTERVAL)) {
+            Write-Host "Reconnecting (mDNS refresh)..." -ForegroundColor Cyan
+            $udp.Close()
+            $udp = New-UDPConnection
+            $lastReconnect = Get-Date
+        }
 
+        $out = "CPU: $cUsage% $cTemp C | GPU: $gUsage% $gTemp C | RAM: $rUsage%"
+        Write-Host "`r$out              " -ForegroundColor Green -NoNewline
+        
         Start-Sleep -Milliseconds 500
     }
-}
-finally {
-    $udpClient.Close()
-    Write-Host ""
-    Write-Host "Monitoring stopped." -ForegroundColor Red
+} finally {
+    $udp.Close()
 }
