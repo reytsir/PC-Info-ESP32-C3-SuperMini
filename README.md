@@ -1,408 +1,333 @@
 # ESP32 System Monitor
 
-![Version](https://img.shields.io/badge/version-9.1-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+> 🖥️ A compact, wireless PC system resource monitor built on ESP32-C3 with a 0.96" OLED display. Monitors CPU/GPU usage, temperatures, and RAM in real-time.
 
-A compact, wireless PC system resource monitor built on ESP32-C3 with a 0.96" OLED display.
+---
 
 ## ✨ Features
 
-- 📡 **Wireless monitoring** - UDP data transmission, no cables needed
-- 📊 **Real-time stats** - CPU/GPU usage, temperatures, RAM usage
-- 📶 **Smart WiFi** - mDNS support (esp32monitor.local), auto-reconnect
-- 🔐 **Secure AP** - Password-protected configuration portal
-- 🎨 **Clean UI** - Right-aligned display with progress bars
-- 🔋 **Battery ready** - Designed for IP5306 power module
-- 💻 **Native Windows** - PowerShell client, no Python required
+- 📡 Wireless monitoring — UDP data transmission, no cables needed
+- 📊 Real-time stats — CPU/GPU usage, temperatures, RAM usage
+- 📶 Smart WiFi — mDNS support (esp32.local), auto-reconnect
+- 🔐 Secure AP — Password-protected configuration portal
+- 🎨 Clean UI — Right-aligned display with progress bars
+- 🔋 Battery ready — Custom IP5306 + MT3608 boost converter power scheme
+- 💻 Native Windows — PowerShell client, runs silently in background
+
+---
+
+## ⚠️ Important Prerequisite for Windows
+
+For the mDNS name (esp32.local) to work on Windows, you must install Apple's Bonjour service (it adds native mDNS support to Windows).
+- Download: Bonjour Print Services for Windows
+- Install it and restart your PC.
+- (Alternative: If you don't install Bonjour, you must use the direct IP address in the script instead of esp32.local).
+
+---
 
 ## 🛠️ Hardware Requirements
 
-- Microcontroller: ESP32-C3 SuperMini
-- Display: OLED SSD1306 0.96" (I2C)
-- Power: Li-Ion Battery (e.g., 1600mAh)
-- Charging Module: IP5306 Power Management
-- Switch: Miniature slide switch (optional)
+| Component | Specification |
+|-----------|---------------|
+| Microcontroller | ESP32-C3 SuperMini |
+| Display | OLED SSD1306 0.96" (I2C, 3.3V) |
+| Battery | Li-Ion (e.g., 1600mAh) |
+| Charging Module | IP5306 Power Management |
+| Boost Converter | MT3608 Step-Up Module (set to ~5V) |
+| Switch | Miniature slide switch |
+| Capacitor | 470µF 10V (highly recommended across MT3608 VOUT+/VOUT- for stability) |
+
+---
 
 ## 🔌 Wiring Diagram
 
-OLED Display to ESP32-C3:
-VCC (3.3V) -> 3.3V
-GND -> GND
-SDA -> GPIO 8
-SCL -> GPIO 9
+### Power Path (Critical for stability)
+text [Battery +] ──> IP5306 (B+) [Battery -] ──> IP5306 (B-) AND MT3608 (VIN-)  IP5306 (OUT+) ──> [Switch] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Shared Ground]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) AND OLED (GND) [Shared Ground Point] 
+💡 Tip: Solder a 470µF capacitor between MT3608 VOUT+ and VOUT- to prevent voltage drops when ESP32 WiFi spikes.
 
-Power Connection:
-Battery -> IP5306 (B+/B-)
-IP5306 (OUT+/OUT-) -> Switch -> ESP32 (5V & GND)
+### Data & OLED Power
+text ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Connect to the shared MT3608 VOUT- ground) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
+
+---
 
 ## 📦 Installation
 
 ### 1. Flash ESP32 Firmware
-
-Requirements:
-- VS Code (https://code.visualstudio.com/)
-- PlatformIO extension
+Requirements: VS Code with PlatformIO extension.
 
 Steps:
-Connect ESP32-C3 via USB
-Press Build and Upload or run:
-pio run --target upload
+1. Connect ESP32-C3 via USB.
+2. Press Build and Upload (→) or run in terminal:
+ bash  pio run --target upload 
 
 ### 2. Configure WiFi
-
-First Boot (or when WiFi unavailable):
-1. ESP32 creates access point: System_monitor
+First Boot (or when saved WiFi is unavailable):
+1. ESP32 creates an access point: System_monitor
 2. Password: 12345678
-3. Connect your phone/PC to this network
-4. Captive portal opens automatically (or visit 192.168.4.1)
-5. Enter your home WiFi credentials
-6. ESP32 saves credentials and displays IP on screen
+3. Connect your phone or PC to this network.
+4. A captive portal will open automatically (or visit 192.168.4.1).
+5. Enter your home/office WiFi credentials.
+6. ESP32 saves them, connects, and displays its IP and esp32.local on the screen.
 
-Reconfigure WiFi:
-- Restart ESP32 without WiFi available
-- After 30 seconds, AP portal will auto-start
-- Connect and enter new credentials
+To Reconfigure: Restart the ESP32 when your saved WiFi is unavailable. After 15 seconds, the AP portal will auto-start.
 
 ### 3. Run PC Client
-
-Prerequisites:
-- Windows 10/11
-- PowerShell 5.1+
+Prerequisites: Windows 10/11, PowerShell 5.1+, Bonjour installed.
 
 Steps:
-Open PowerShell and run:
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-cd "path\to\your\project"
-.\pc-monitor.ps1
+1. Open PowerShell.
+2. Allow script execution (one-time only):
+ powershell  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass 
+3. Navigate to the project folder and run:
+ powershell  .\pc-monitor.ps1 
 
-The script will:
-- Auto-resolve ESP32 via mDNS (esp32monitor.local)
-- Read CPU/GPU/RAM usage via native Windows APIs
-- Send data via UDP every 500ms
-- Display real-time stats in console
+---
 
-## 🚀 Auto-Start Setup (Run on Windows Startup)
+## 🚀 Auto-Start Setup (Run Silently on Windows Startup)
 
-### Method 1: Task Scheduler (Recommended)
+To make the script start hidden in the background when you log in, use Task Scheduler (Recommended).
 
-1. Open Task Scheduler (search in Start menu)
-2. Click "Create Basic Task" in the right panel
-3. Name: "ESP32 Monitor"
-4. Trigger: "When I log on"
-5. Action: "Start a program"
+1. Open Task Scheduler (search in Start menu).
+2. Click Create Basic Task in the right panel.
+3. Name: ESP32 Monitor. Click Next.
+4. Trigger: When I log on. Click Next.
+5. Action: Start a program. Click Next.
 6. Program/script: powershell.exe
-7. Add arguments: -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\full\path\to\pc-monitor.ps1"
-8. Click Finish
-9. Right-click your new task -> Properties -> Check "Run with highest privileges"
+7. Add arguments (copy exactly, replace path with yours):
+ text  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\full\path\to\your\pc-monitor.ps1" 
+8. Click Finish.
+9. Find your new task in the library, right-click it → Properties.
+10. Check "Run with highest privileges" and click OK.
 
-### Method 2: Startup Folder (Simpler)
+(The script is designed to wait patiently if the ESP32 is turned on after the PC, retrying connection every 5 seconds).
 
-1. Press Win+R, type: shell:startup
-2. Right-click in the folder -> New -> Shortcut
-3. Location: powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\full\path\to\pc-monitor.ps1"
-4. Name: ESP32 Monitor
-5. Click Finish
-
-Note: For Method 2, you may need to adjust Execution Policy permanently:
-Run PowerShell as Administrator:
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+---
 
 ## ⚙️ Configuration
 
-Edit pc-monitor.ps1:
-$ESP32_HOSTNAME = "esp32monitor.local"
-$UDP_PORT = 4210
+In pc-monitor.ps1:
+powershell $HOSTNAME = "esp32.local" # mDNS hostname (requires Bonjour) $PORT = 4210 # UDP port 
 
-Edit src/main.cpp:
-const int UDP_PORT = 4210;
-wm.setConfigPortalTimeout(120);
+In src/main.cpp:
+cpp const int UDP_PORT = 4210; // mDNS name is set to "esp32" -> resolves to esp32.local 
 
-WiFi Credentials Reset:
-1. Hold BOOT button for 5 seconds while powering on
-2. Or reflash with: pio run --target erase
-3. AP portal will start automatically
+Reset WiFi Credentials:
+1. Hold the BOOT button on ESP32 for 5 seconds while powering on.
+2. Or erase flash via PlatformIO: pio run --target erase.
+3. The AP portal will start automatically on next boot.
+
+---
 
 ## 📊 How It Works
 
 Data Flow:
-PC (PowerShell) -> UDP Port 4210 -> ESP32 -> OLED Display
+PC (PowerShell) → UDP Port 4210 → ESP32 → OLED Display
 
-JSON Format:
-{
-  "cpu_temp": 45.2,
-  "gpu_temp": 62.0,
-  "cpu_usage": 35,
-  "gpu_usage": 5,
-  "ram_usage": 58
-}
+JSON Payload:
+json {  "cpu_temp": 45.2,  "gpu_temp": 62.0,  "cpu_usage": 35,  "gpu_usage": 5,  "ram_usage": 58 } 
 
 Monitoring Methods:
-- CPU Usage: Windows Performance Counters
-- GPU Usage: WMI Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine
-- RAM Usage: Windows CIM/WMI
-- Temperatures: Estimated based on usage (native Windows doesn't expose iGPU temps)
+- CPU: Windows Performance Counters
+- GPU: WMI Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine
+- RAM: Windows CIM/WMI
+- Temperatures: Estimated based on load (native Windows does not expose integrated GPU temperatures).
+
+---
 
 ## 🖥️ Display Layout
 
-System Monitor       OK [-45]
-CPU: 35%        45.2C
-[progress bar]
-GPU: 5%         48.0C
-[progress bar]
-RAM: 58%
-[progress bar]
+text System Monitor OK CPU: 35% 45.2C [███████░░░░░░░░░░░] GPU: 5% 48.0C [█░░░░░░░░░░░░░░░░░] RAM: 58% [████████░░░░░░░░░░] 
+Status indicators: OK (Receiving data) | No (No data for 10+ seconds)
 
-Status indicators:
-- OK - Receiving data
-- No - No data for 10+ seconds
-- [-45] - WiFi signal strength (RSSI in dBm)
-
-## 🔐 Security
-
-- AP Password: 12345678 (change in main.cpp)
-- AP Timeout: 120 seconds (auto-disables)
-- Network: Only accessible within local network
-- UDP: No encryption (local network only)
+---
 
 ## 🐛 Troubleshooting
 
-ESP32 won't connect to WiFi:
-- Check credentials in WiFiManager portal
-- Ensure 2.4GHz network (ESP32 doesn't support 5GHz)
-- Restart ESP32 and try again
+- ESP32 won't connect to WiFi: Ensure it's a 2.4GHz network (ESP32-C3 does not support 5GHz). Check password in the portal.
+- PowerShell shows "Waiting for ESP32":
+ 1. Ensure ESP32 and PC are on the same network.
+ 2. Verify mDNS: open CMD and type ping esp32.local.
+ 3. If it fails, ensure Bonjour is installed, or change $HOSTNAME to the direct IP (e.g., "192.168.0.221") in the script.
+- GPU usage always 0%: Normal for integrated graphics at desktop idle. Launch a game or benchmark to see it rise. Requires Windows 10/11.
+- Display shows garbage/nothing: Check I2C wiring (SDA=GPIO8, SCL=GPIO9). Ensure OLED is powered by 3.3V, not 5V. Check for cold solder joints.
+- ESP32 restarts when WiFi turns on: Add a 470µF capacitor across the MT3608 VOUT+ and VOUT- to handle the 500mA WiFi power spike.
 
-PowerShell script shows "Cannot resolve":
-- Ensure ESP32 and PC are on same network
-- Check mDNS is working: ping esp32monitor.local
-- Use IP address directly if mDNS fails
+---
 
-GPU usage always 0%:
-- This is normal for integrated graphics at idle
-- Run a game or benchmark to see GPU load
-- WMI GPU counters require Windows 10/11
+## 📝 Version History
 
-Display shows garbage/nothing:
-- Check I2C wiring (SDA=GPIO8, SCL=GPIO9)
-- Ensure 3.3V power (not 5V!)
-- Try SH1106 controller instead of SSD1306
+- v1.0.0 - Final Release: MT3608 power scheme, mDNS fix (esp32.local), silent auto-start, optimized code, bilingual docs.
+- v0.9.x - Development iterations: WMI GPU monitoring, auto-AP fallback, progress bars.
 
-##  Version History
-
-v9.1 - Auto-AP on boot, disabled blue LED, WMI GPU monitoring, auto-start guide
-v9.0 - mDNS support, auto-reconnect, progress bars
-v7.0 - UDP server with JSON parsing
-v6.0 - WiFiManager integration
-v1.0 - Initial release
+---
 
 ## 📄 License
 
 MIT License - see LICENSE file for details.
 
-## 🤝 Contributing
+---
 
-Feel free to submit issues and enhancement requests!
+## 🤝 Contributing & Support
 
-## 📞 Support
+Feel free to submit issues and enhancement requests on GitHub!
 
-For questions and support, open an issue on GitHub.
+---
+---
+
+# ✨ ESP32 System Monitor (РУССКАЯ ВЕРСИЯ)
+
+Компактный беспроводной монитор системных ресурсов ПК на базе ESP32-C3 с OLED дисплеем 0.96". Отслеживает загрузку CPU/GPU, температуры и использование RAM в реальном времени.
 
 ---
 
-## ✨ ESP32 System Monitor (РУССКАЯ ВЕРСИЯ)
+## ⚠️ Важное требование для Windows
 
-Компактный беспроводной монитор системных ресурсов ПК на базе ESP32-C3 с OLED дисплеем 0.96".
+Для работы mDNS-имени (esp32.local) в Windows необходимо установить службу Bonjour (она добавляет нативную поддержку mDNS).
+- Скачать: Bonjour Print Services for Windows
+- Установите и перезагрузите ПК.
+- (Альтернатива: если не устанавливать Bonjour, в скрипте придется использовать прямой IP-адрес вместо esp32.local).
 
-## ✨ Возможности
-
--  Беспроводной мониторинг - передача данных по UDP
-- 📊 Статистика в реальном времени - CPU/GPU, температуры, RAM
-- 📶 Умный WiFi - mDNS (esp32monitor.local), автопереподключение
-- 🔐 Безопасная точка доступа - защищённый паролем портал
-- 🎨 Чистый интерфейс - прогресс-бары и выравнивание
-- 🔋 Готов к батарее - поддержка модуля IP5306
-- 💻 Нативный Windows - PowerShell, не требует Python
+---
 
 ## 🛠️ Необходимое оборудование
 
-- Микроконтроллер: ESP32-C3 SuperMini
-- Дисплей: OLED SSD1306 0.96" (I2C)
-- Питание: Li-Ion аккумулятор (1600mAh)
-- Модуль зарядки: IP5306
-- Переключатель: Миниатюрный слайдер (опционально)
+| Компонент | Характеристики |
+|-----------|----------------|
+| Микроконтроллер | ESP32-C3 SuperMini |
+| Дисплей | OLED SSD1306 0.96" (I2C, 3.3V) |
+| Питание | Li-Ion аккумулятор (например, 1600mAh) |
+| Модуль зарядки | IP5306 |
+| Повышающий преобразователь | MT3608 (настроен на ~5V) |
+| Переключатель | Миниатюрный слайдер |
+| Конденсатор | 470 мкФ 10В (настоятельно рекомендуется между VOUT+/VOUT- модуля MT3608 для стабильности) |
 
-## 🔌 Подключение
+---
 
-OLED дисплей к ESP32-C3:
-VCC (3.3V) -> 3.3V
-GND -> GND
-SDA -> GPIO 8
-SCL -> GPIO 9
+## 🔌 Схема подключения
 
-Питание:
-Аккумулятор -> IP5306 (B+/B-)
-IP5306 (OUT+/OUT-) -> Переключатель -> ESP32 (5V и GND)
+### Цепь питания (Критично для стабильности)
+text [Аккумулятор +] ──> IP5306 (B+) [Аккумулятор -] ──> IP5306 (B-) И MT3608 (VIN-)  IP5306 (OUT+) ──> [Выключатель] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Общая земля]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) И OLED (GND) [Точка объединения земли] 
+💡 Совет: Припаяйте конденсатор 470 мкФ между VOUT+ и VOUT- модуля MT3608, чтобы предотвратить просадки напряжения при пиковом потреблении WiFi модуля ESP32.
+
+### Данные и питание OLED
+text ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Подключить к общей земле MT3608 VOUT-) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
+
+---
 
 ## 📦 Установка
 
 ### 1. Прошивка ESP32
-
-Требования:
-- VS Code
-- PlatformIO
+Требования: VS Code с расширением PlatformIO.
 
 Шаги:
-Подключите ESP32-C3 по USB
-Нажмите Build и Upload или выполните:
-pio run --target upload
+1. Подключите ESP32-C3 по USB.
+2. Нажмите Build and Upload (→) или выполните в терминале:
+ bash  pio run --target upload 
 
 ### 2. Настройка WiFi
-
-Первый запуск:
-1. ESP32 создаёт точку доступа: System_monitor
+Первый запуск (или если сохраненная сеть недоступна):
+1. ESP32 создает точку доступа: System_monitor
 2. Пароль: 12345678
-3. Подключитесь с телефона/ПК
-4. Откроется портал (или перейдите на 192.168.4.1)
-5. Введите данные вашего WiFi
-6. ESP32 сохранит и покажет IP на экране
+3. Подключите телефон или ПК к этой сети.
+4. Автоматически откроется портал настройки (или перейдите по адресу 192.168.4.1).
+5. Введите данные вашего домашнего/рабочего WiFi.
+6. ESP32 сохранит их, подключится и покажет свой IP и esp32.local на экране.
 
-Перенастройка WiFi:
-- Перезагрузите ESP32 без доступного WiFi
-- Через 30 секунд автоматически запустится портал
-- Подключитесь и введите новые данные
+Для перенастройки: Перезагрузите ESP32, когда сохраненная сеть WiFi недоступна. Через 15 секунд портал настройки запустится автоматически.
 
 ### 3. Запуск клиента на ПК
-
-Требования:
-- Windows 10/11
-- PowerShell 5.1+
+Требования: Windows 10/11, PowerShell 5.1+, установленный Bonjour.
 
 Шаги:
-Откройте PowerShell и выполните:
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-cd "путь\к\проекту"
-.\pc-monitor.ps1
+1. Откройте PowerShell.
+2. Разрешите выполнение скриптов (один раз):
+ powershell  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass 
+3. Перейдите в папку проекта и запустите:
+ powershell  .\pc-monitor.ps1 
 
-## 🚀 Автозапуск скрипта (при старте Windows)
+---
 
-### Способ 1: Планировщик заданий (Рекомендуется)
+## 🚀 Автозапуск (Скрытый режим при старте Windows)
 
-1. Откройте Планировщик заданий (найдите в меню Пуск)
-2. Нажмите "Создать простую задачу" в правой панели
-3. Имя: "ESP32 Monitor"
-4. Триггер: "При входе в систему"
-5. Действие: "Запустить программу"
-6. Программа: powershell.exe
-7. Аргументы: -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\полный\путь\к\pc-monitor.ps1"
-8. Нажмите Готово
-9. Правой кнопкой на задаче -> Свойства -> Отметьте "Выполнять с наивысшими правами"
+Чтобы скрипт запускался скрыто в фоне при входе в систему, используйте Планировщик заданий.
 
-### Способ 2: Папка Автозагрузка (Проще)
+1. Откройте Планировщик заданий (найдите в меню Пуск).
+2. Нажмите Создать простую задачу в правой панели.
+3. Имя: ESP32 Monitor. Нажмите "Далее".
+4. Триггер: При входе в систему. Нажмите "Далее".
+5. Действие: Запустить программу. Нажмите "Далее".
+6. Программа или сценарий: powershell.exe
+7. Добавить аргументы (скопируйте точно, заменив путь на свой):
+ text  -WindowStyle Hidden -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\полный\путь\к\вашему\pc-monitor.ps1" 
+8. Нажмите Готово.
+9. Найдите созданную задачу в библиотеке, кликните правой кнопкой → Свойства.
+10. Поставьте галочку "Выполнять с наивысшими правами" и нажмите ОК.
 
-1. Нажмите Win+R, введите: shell:startup
-2. Правой кнопкой в папке -> Создать -> Ярлык
-3. Расположение: powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\полный\путь\к\pc-monitor.ps1"
-4. Имя: ESP32 Monitor
-5. Нажмите Готово
+(Скрипт настроен так, что если ПК включился раньше ESP32, он будет терпеливо ждать появления платы в сети, проверяя связь каждые 5 секунд).
 
-Примечание: Для Способа 2 может потребоваться изменить политику выполнения:
-Запустите PowerShell от имени администратора:
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+---
 
 ## ⚙️ Настройка
 
 В pc-monitor.ps1:
-$ESP32_HOSTNAME = "esp32monitor.local"
-$UDP_PORT = 4210
+powershell $HOSTNAME = "esp32.local" # mDNS имя (требует Bonjour) $PORT = 4210 # UDP порт 
 
 В src/main.cpp:
-const int UDP_PORT = 4210;
-wm.setConfigPortalTimeout(120);
+cpp const int UDP_PORT = 4210; // Имя mDNS установлено как "esp32" -> резолвится как esp32.local 
 
-Сброс WiFi:
-1. Зажмите кнопку BOOT на 5 секунд при включении
-2. Или перепрошейте: pio run --target erase
-3. Портал запустится автоматически
+Сброс настроек WiFi:
+1. Зажмите кнопку BOOT на ESP32 на 5 секунд при включении.
+2. Или очистите память через PlatformIO: pio run --target erase.
+3. При следующем включении портал настройки запустится автоматически.
 
-##  Как это работает
+---
+
+## 📊 Как это работает
 
 Поток данных:
-ПК (PowerShell) -> UDP порт 4210 -> ESP32 -> OLED дисплей
-
-Формат JSON:
-{
-  "cpu_temp": 45.2,
-  "gpu_temp": 62.0,
-  "cpu_usage": 35,
-  "gpu_usage": 5,
-  "ram_usage": 58
-}
+ПК (PowerShell) → UDP порт 4210 → ESP32 → OLED дисплей
 
 Методы мониторинга:
-- CPU: Windows Performance Counters
+- CPU: Счетчики производительности Windows
 - GPU: WMI класс Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine
 - RAM: Windows CIM/WMI
-- Температуры: Расчётные (Windows не предоставляет температуры iGPU)
+- Температуры: Расчетные на основе нагрузки (Windows не предоставляет нативный доступ к датчикам температуры встроенной графики).
+
+---
 
 ## 🖥️ Расположение на экране
 
-System Monitor       OK [-45]
-CPU: 35%        45.2C
-[прогресс-бар]
-GPU: 5%         48.0C
-[прогресс-бар]
-RAM: 58%
-[прогресс-бар]
+text System Monitor OK CPU: 35% 45.2C [прогресс-бар] GPU: 5% 48.0C [прогресс-бар] RAM: 58% [прогресс-бар] 
+Индикаторы статуса: OK (данные приходят) | No (нет данных более 10 секунд)
 
-Индикаторы:
-- OK - данные приходят
-- No - нет данных 10+ секунд
-- [-45] - сила WiFi сигнала (RSSI)
-
-## 🔐 Безопасность
-
-- Пароль AP: 12345678 (можно изменить в main.cpp)
-- Таймаут AP: 120 секунд
-- Доступ: Только в локальной сети
-- UDP: Без шифрования (только локальная сеть)
+---
 
 ## 🐛 Решение проблем
 
-ESP32 не подключается к WiFi:
-- Проверьте данные в портале WiFiManager
-- Убедитесь, что сеть 2.4GHz (ESP32 не поддерживает 5GHz)
-- Перезагрузите ESP32
+- ESP32 не подключается к WiFi: Убедитесь, что это сеть 2.4 ГГц (ESP32-C3 не поддерживает 5 ГГц). Проверьте пароль в портале.
+- Скрипт пишет "Waiting for ESP32":
+ 1. Убедитесь, что ESP32 и ПК находятся в одной сети.
+ 2. Проверьте mDNS: откройте CMD и введите ping esp32.local.
+ 3. Если не пингуется, убедитесь, что Bonjour установлен, или измените $HOSTNAME на прямой IP (например, "192.168.0.221") в скрипте.
+- Загрузка GPU всегда 0%: Нормально для встроенной графики в режиме простоя. Запустите игру или бенчмарк, чтобы увидеть рост. Требуется Windows 10/11.
+- Дисплей показывает мусор или не горит: Проверьте провода I2C (SDA=GPIO8, SCL=GPIO9). Убедитесь, что OLED запитан от 3.3V, а не от 5V. Проверьте качество пайки.
+- ESP32 перезагружается при включении WiFi: Припаяйте конденсатор 470 мкФ между VOUT+ и VOUT- модуля MT3608, чтобы сгладить пиковое потребление тока модулем WiFi.
 
-Скрипт показывает "Cannot resolve":
-- Убедитесь, что ESP32 и ПК в одной сети
-- Проверьте mDNS: ping esp32monitor.local
-- Используйте IP напрямую, если mDNS не работает
-
-Загрузка GPU всегда 0%:
-- Это нормально для встроенной графики в простое
-- Запустите игру или бенчмарк для проверки
-- Требуется Windows 10/11 для WMI счётчиков
-
-Дисплей показывает мусор/пустой:
-- Проверьте подключение I2C (SDA=GPIO8, SCL=GPIO9)
-- Убедитесь в питании 3.3V (не 5V!)
-- Попробуйте контроллер SH1106 вместо SSD1306
+---
 
 ## 📝 История версий
 
-v9.1 - Авто-AP при загрузке, отключение синего LED, WMI GPU мониторинг, инструкция по автозапуску
-v9.0 - Поддержка mDNS, автопереподключение, прогресс-бары
-v7.0 - UDP сервер с парсингом JSON
-v6.0 - Интеграция WiFiManager
-v1.0 - Первый релиз
+- v1.0.0 - Финальный релиз: схема питания с MT3608, исправление mDNS (esp32.local), скрытый автозапуск, оптимизация кода, двуязычная документация.
+- v0.9.x - Этапы разработки: WMI мониторинг GPU, авто-AP, прогресс-бары.
+
+---
 
 ## 📄 Лицензия
 
 MIT License - см. файл LICENSE.
 
-## 🤝 Участие в разработке
+---
 
-Не стесняйтесь создавать issues и предлагать улучшения!
+## 🤝 Участие в разработке и Поддержка
 
-## 📞 Поддержка
-
-Для вопросов и поддержки создайте issue на GitHub.
+Не стесняйтесь создавать issues и предлагать улучшения на GitHub!
