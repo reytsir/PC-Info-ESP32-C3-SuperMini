@@ -49,9 +49,10 @@ void setup() {
 
     WiFi.mode(WIFI_AP_STA);
     WiFi.begin();
+    WiFi.setTxPower(WIFI_POWER_17dBm);
 
     int waitCount = 0;
-    while (WiFi.status() != WL_CONNECTED && waitCount < 15 && wm.getWiFiIsSaved()) {
+    while (WiFi.status() != WL_CONNECTED && (waitCount < 15 && wm.getWiFiIsSaved())) {
         delay(1000);
         waitCount++;
         u8g2.clearBuffer();
@@ -94,8 +95,8 @@ void setup() {
         u8g2.sendBuffer();
         delay(2000);
 
-        WiFi.mode(WIFI_AP_STA);
-        wm.startConfigPortal("System_monitor", "12345678");
+        wm.autoConnect("System_monitor", "12345678");
+        delay(1000);
         ESP.restart();
     }
 }
