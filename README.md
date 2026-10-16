@@ -1,3 +1,8 @@
+# Examples of working
+![Not connected](media/fail.jpg)
+![Not sending data](media/nodata.jpg)
+![Fully working](media/working.jpg)
+
 # ESP32 System Monitor
 
 > 🖥️ A compact, wireless PC system resource monitor built on ESP32-C3 with a 0.96" OLED display. Monitors CPU/GPU usage, temperatures, and RAM in real-time.
@@ -44,6 +49,7 @@ For the mDNS name (esp32.local) to work on Windows, you must install Apple's Bon
 ### Power Path (Critical for stability)
 > [Battery +] ──> IP5306 (B+) [Battery -] ──> IP5306 (B-) AND MT3608 (VIN-)  IP5306 (OUT+) ──> [Switch] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Shared Ground]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) AND OLED (GND) [Shared Ground Point] 
 💡 Tip: Solder a 470µF capacitor between MT3608 VOUT+ and VOUT- to prevent voltage drops when ESP32 WiFi spikes.
+![Connection scheme](media/conn_scheme.png)
 
 ### Data & OLED Power
 > ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Connect to the shared MT3608 VOUT- ground) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
@@ -208,7 +214,7 @@ Feel free to submit issues and enhancement requests on GitHub!
 ### Цепь питания (Критично для стабильности)
 > [Аккумулятор +] ──> IP5306 (B+) [Аккумулятор -] ──> IP5306 (B-) И MT3608 (VIN-)  IP5306 (OUT+) ──> [Выключатель] ──> MT3608 (VIN+) IP5306 (OUT-) ──> MT3608 (VIN-) [Общая земля]  MT3608 (VOUT+) ──> ESP32 (5V) MT3608 (VOUT-) ──> ESP32 (GND) И OLED (GND) [Точка объединения земли] 
 💡 Совет: Припаяйте конденсатор 470 мкФ между VOUT+ и VOUT- модуля MT3608, чтобы предотвратить просадки напряжения при пиковом потреблении WiFi модуля ESP32.
-
+![Connection scheme](media/conn_scheme.png)
 ### Данные и питание OLED
 > ESP32 3.3V ──> OLED VCC ESP32 GND ──> OLED GND (Подключить к общей земле MT3608 VOUT-) ESP32 GPIO 8 ──> OLED SDA ESP32 GPIO 9 ──> OLED SCL 
 
