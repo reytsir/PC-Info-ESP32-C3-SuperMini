@@ -1,8 +1,8 @@
 # Examples of working
-![Not connected](media/fail.jpg)
-![Not sending data](media/nodata.jpg)
-![Fully working](media/working.jpg)
-![video](media/working.mp4)
+![Not connected | Не подключено](media/fail.jpg)
+![Not sending data | Нет принимаемых данных](media/nodata.jpg)
+![Fully working | В работе](media/working.jpg)
+![Video example | Видео пример работы](media/working.mp4)
 
 # ESP32 System Monitor
 
