@@ -2,6 +2,7 @@
 ![Not connected](media/fail.jpg)
 ![Not sending data](media/nodata.jpg)
 ![Fully working](media/working.jpg)
+![video](media/working.mp4)
 
 # ESP32 System Monitor
 
